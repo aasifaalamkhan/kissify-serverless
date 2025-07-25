@@ -1,10 +1,10 @@
-torch>=2.0.1
+torch==2.1.2
 diffusers==0.34.0
-transformers>=4.37.2
+transformers
 accelerate
 safetensors
 Pillow
+opencv-python
 requests
 tqdm
 runpod
-opencv-python
