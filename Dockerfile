@@ -11,19 +11,23 @@ RUN ln -sf /usr/bin/python3.10 /usr/bin/python && ln -sf /usr/bin/pip3 /usr/bin/
 # Set working directory
 WORKDIR /app
 
-# Copy project files
+# Copy all files into image
 COPY . .
 
 # Install Python dependencies
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-# Pre-download HuggingFace models into cache
-RUN python -c "from diffusers import StableDiffusionPipeline; StableDiffusionPipeline.from_pretrained('SG161222/Realistic_Vision_V5.1_noVAE', torch_dtype='float16')" \
- && python -c \"import requests; r = requests.get('https://huggingface.co/guoyww/animatediff-motion-adapter-v1-5-3/resolve/main/mm_sd_v15_v2.safetensors'); open('/tmp/motion_adapter.safetensors', 'wb').write(r.content)\" \
- && python -c "from transformers import CLIPVisionModelWithProjection, CLIPImageProcessor; \
-               CLIPVisionModelWithProjection.from_pretrained('h94/IP-Adapter', subfolder='models/image_encoder'); \
-               CLIPImageProcessor.from_pretrained('h94/IP-Adapter', subfolder='models/image_encoder')"
+# Preload base SD model
+RUN python -c "from diffusers import StableDiffusionPipeline; StableDiffusionPipeline.from_pretrained('SG161222/Realistic_Vision_V5.1_noVAE', torch_dtype='float16')"
+
+# Preload motion module (just download to trigger cache)
+RUN python -c "import requests; r = requests.get('https://huggingface.co/guoyww/animatediff-motion-adapter-v1-5-3/resolve/main/mm_sd_v15_v2.safetensors'); open('/tmp/motion_adapter.safetensors', 'wb').write(r.content)"
+
+# Preload IP-Adapter encoders
+RUN python -c "from transformers import CLIPVisionModelWithProjection, CLIPImageProcessor; \
+CLIPVisionModelWithProjection.from_pretrained('h94/IP-Adapter', subfolder='models/image_encoder'); \
+CLIPImageProcessor.from_pretrained('h94/IP-Adapter', subfolder='models/image_encoder')"
 
 # Run the handler
 CMD ["python", "handler.py"]
