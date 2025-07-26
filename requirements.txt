@@ -1,10 +1,7 @@
 torch==2.1.2+cu121
 diffusers==0.34.0
-transformers==4.30.0
-accelerate
-safetensors
+transformers==4.40.0
+huggingface_hub==0.22.2
 Pillow
-opencv-python
 requests
-tqdm
-runpod  # Only if you interact with Runpod inside the container
+runpod  # Only if interacting with Runpod within the container, else remove
