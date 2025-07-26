@@ -1,10 +1,10 @@
-torch==2.1.2
+torch==2.1.2+cu121
 diffusers==0.34.0
-transformers
+transformers==4.30.0
 accelerate
 safetensors
 Pillow
 opencv-python
 requests
 tqdm
-runpod
+runpod  # Only if you interact with Runpod inside the container
