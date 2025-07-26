@@ -1,24 +1,31 @@
-# Step 5: Install dependencies including PyTorch with CUDA
+FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
+
+# Install dependencies and PyTorch with CUDA support
 RUN apt-get update && apt-get install -y \
-    python3-pip \
-    python3-dev \
-    python3-venv \
-    git \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+    python3.10 python3-pip git curl libgl1 libglib2.0-0 \
+ && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN pip install torch==2.1.0+cu118 diffusers transformers accelerate
+# Ensure the Python version is correct
+RUN ln -sf /usr/bin/python3.10 /usr/bin/python && ln -sf /usr/bin/pip3 /usr/bin/pip
 
-# Step 6: Pre-download models
-RUN mkdir /app/models && \
-    python3 -c "from diffusers import StableDiffusionPipeline; \
-    StableDiffusionPipeline.from_pretrained('SG161222/Realistic_Vision_V5.1_noVAE', torch_dtype='float16', cache_dir='/app/models/SG161222/Realistic_Vision_V5.1_noVAE')"
-
-# Copy the rest of your app code
+# Set working directory
+WORKDIR /app
 COPY . .
 
-# Expose port
-EXPOSE 8000
+# Install Python dependencies
+RUN pip install --upgrade pip
+RUN pip install -r requirements.txt
 
-# Start the app
-CMD ["python3", "app.py"]
+# Cache models with CUDA support
+RUN python -c "from diffusers import AnimateDiffPipeline; \
+    pipeline = AnimateDiffPipeline.from_pretrained('SG161222/Realistic_Vision_V5.1_noVAE', torch_dtype='float16', revision='main')"
+
+RUN python -c "from diffusers import MotionAdapter; \
+    adapter = MotionAdapter.from_pretrained('guoyww/animatediff-motion-adapter-v1-5-3')"
+
+RUN python -c "from transformers import CLIPVisionModelWithProjection, CLIPImageProcessor; \
+    model = CLIPVisionModelWithProjection.from_pretrained('h94/IP-Adapter', subfolder='models/image_encoder'); \
+    processor = CLIPImageProcessor.from_pretrained('h94/IP-Adapter', subfolder='models/image_encoder')"
+
+# Default command to run the app
+CMD ["python", "handler.py"]
