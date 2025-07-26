@@ -1,33 +1,24 @@
-FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
-
-# Install system dependencies
+# Step 5: Install dependencies including PyTorch with CUDA
 RUN apt-get update && apt-get install -y \
-    python3.10 python3-pip git libgl1 libglib2.0-0 \
- && apt-get clean && rm -rf /var/lib/apt/lists/*
+    python3-pip \
+    python3-dev \
+    python3-venv \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Symlinks for Python & pip
-RUN ln -sf /usr/bin/python3.10 /usr/bin/python && ln -sf /usr/bin/pip3 /usr/bin/pip
+RUN pip install torch==2.1.0+cu118 diffusers transformers accelerate
 
-# Set working directory
-WORKDIR /app
+# Step 6: Pre-download models
+RUN mkdir /app/models && \
+    python3 -c "from diffusers import StableDiffusionPipeline; \
+    StableDiffusionPipeline.from_pretrained('SG161222/Realistic_Vision_V5.1_noVAE', torch_dtype='float16', cache_dir='/app/models/SG161222/Realistic_Vision_V5.1_noVAE')"
 
-# Copy all files into image
+# Copy the rest of your app code
 COPY . .
 
-# Install Python dependencies
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+# Expose port
+EXPOSE 8000
 
-# Preload base SD model
-RUN python -c "from diffusers import StableDiffusionPipeline; StableDiffusionPipeline.from_pretrained('SG161222/Realistic_Vision_V5.1_noVAE', torch_dtype='float16')"
-
-# Preload motion module (just download to trigger cache)
-RUN python -c "import requests; r = requests.get('https://huggingface.co/guoyww/animatediff-motion-adapter-v1-5-3/resolve/main/mm_sd_v15_v2.safetensors'); open('/tmp/motion_adapter.safetensors', 'wb').write(r.content)"
-
-# Preload IP-Adapter encoders
-RUN python -c "from transformers import CLIPVisionModelWithProjection, CLIPImageProcessor; \
-CLIPVisionModelWithProjection.from_pretrained('h94/IP-Adapter', subfolder='models/image_encoder'); \
-CLIPImageProcessor.from_pretrained('h94/IP-Adapter', subfolder='models/image_encoder')"
-
-# Run the handler
-CMD ["python", "handler.py"]
+# Start the app
+CMD ["python3", "app.py"]
